@@ -31,6 +31,17 @@ export interface PaymentVerificationResponse {
   error?: string;
 }
 
+// Get the API base URL based on environment
+const getApiBaseUrl = (): string => {
+  // In production, use the environment variable
+  if (import.meta.env.PROD) {
+    return import.meta.env.VITE_API_URL || import.meta.env.VITE_APP_URL || 'https://backend.onrender.com';
+  }
+  
+  // In development, use localhost or environment variable
+  return import.meta.env.VITE_API_URL || import.meta.env.VITE_APP_URL || 'http://localhost:3001';
+};
+
 // Get auth token from storage
 const getAuthToken = () => {
   try {
@@ -43,7 +54,8 @@ const getAuthToken = () => {
 
 export const createCheckoutSession = async (paymentData: PaymentData): Promise<CheckoutResponse> => {
   try {
-    const response = await fetch('http://localhost:3001/api/payments/create-checkout-session', {
+    const apiBaseUrl = getApiBaseUrl();
+    const response = await fetch(`${apiBaseUrl}/api/payments/create-checkout-session`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -101,7 +113,8 @@ export const redirectToCheckout = async (paymentData: PaymentData): Promise<void
 
 export const verifyPayment = async (sessionId: string): Promise<PaymentVerificationResponse> => {
   try {
-    const response = await fetch(`http://localhost:3001/api/payments/verify-session/${sessionId}`, {
+    const apiBaseUrl = getApiBaseUrl();
+    const response = await fetch(`${apiBaseUrl}/api/payments/verify-session/${sessionId}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -146,7 +159,8 @@ export const getPaymentHistory = async (): Promise<{
   error?: string;
 }> => {
   try {
-    const response = await fetch('http://localhost:3001/api/payments/history', {
+    const apiBaseUrl = getApiBaseUrl();
+    const response = await fetch(`${apiBaseUrl}/api/payments/history`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -179,6 +193,43 @@ export const getPaymentHistory = async (): Promise<{
   }
 };
 
+// Test API connection
+export const testApiConnection = async (): Promise<{
+  success: boolean;
+  url?: string;
+  error?: string;
+}> => {
+  try {
+    const apiBaseUrl = getApiBaseUrl();
+    const response = await fetch(`${apiBaseUrl}/api/payments/test-stripe`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getAuthToken()}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`API connection failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    return {
+      success: true,
+      url: apiBaseUrl,
+      ...data
+    };
+  } catch (error) {
+    console.error('API connection test error:', error);
+    return {
+      success: false,
+      url: getApiBaseUrl(),
+      error: error instanceof Error ? error.message : 'Network error occurred'
+    };
+  }
+};
+
 // Legacy function name for backward compatibility
 export const createPaymentIntent = createCheckoutSession;
 
@@ -189,4 +240,15 @@ export const confirmPayment = async (stripe: any, clientSecret: string, paymentM
     success: false,
     error: 'This method is not supported with Checkout Sessions'
   };
+};
+
+// Debug function to log current configuration
+export const debugConfiguration = () => {
+  console.log('Payment Service Configuration:', {
+    isProd: import.meta.env.PROD,
+    apiBaseUrl: getApiBaseUrl(),
+    viteApiUrl: import.meta.env.VITE_API_URL,
+    viteAppUrl: import.meta.env.VITE_APP_URL,
+    hasToken: !!getAuthToken()
+  });
 };
