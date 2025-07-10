@@ -33,48 +33,90 @@ export interface PaymentVerificationResponse {
 
 // Get the API base URL based on environment
 const getApiBaseUrl = (): string => {
-  // In production, use the environment variable
+  // Force production URL in production
   if (import.meta.env.PROD) {
-    return import.meta.env.VITE_API_URL || import.meta.env.VITE_APP_URL || 'https://backend.onrender.com';
+    return 'https://backend.onrender.com'; // Hardcoded production URL
   }
   
-  // In development, use localhost or environment variable
-  return import.meta.env.VITE_API_URL || import.meta.env.VITE_APP_URL || 'http://localhost:3001';
+  // In development, use environment variable or default local URL
+  return import.meta.env.VITE_API_URL || 'http://localhost:3001';
 };
 
-// Get auth token from storage
-const getAuthToken = () => {
+// Get auth token from storage with proper error handling
+const getAuthToken = (): string => {
   try {
-    return localStorage.getItem('token');
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    if (!token) {
+      console.error('No authentication token found');
+      throw new Error('Authentication required - Please login again');
+    }
+    return token;
   } catch (error) {
-    console.warn('localStorage not available, using session storage');
-    return sessionStorage.getItem('token');
+    console.error('Token retrieval error:', error);
+    throw new Error('Failed to retrieve authentication token');
+  }
+};
+
+// Enhanced fetch wrapper with common headers and error handling
+const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
+  const apiBaseUrl = getApiBaseUrl();
+  const url = `${apiBaseUrl}${endpoint}`;
+  
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${getAuthToken()}`,
+    ...options.headers
+  };
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers
+    });
+
+    if (!response.ok) {
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch {
+        errorData = await response.text();
+      }
+      
+      console.error('API Error:', {
+        status: response.status,
+        statusText: response.statusText,
+        url,
+        errorData
+      });
+
+      throw new Error(
+        errorData?.message || 
+        errorData?.error || 
+        response.statusText || 
+        `Request failed with status ${response.status}`
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Network Error:', {
+      url,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+    throw error;
   }
 };
 
 export const createCheckoutSession = async (paymentData: PaymentData): Promise<CheckoutResponse> => {
   try {
-    const apiBaseUrl = getApiBaseUrl();
-    const response = await fetch(`${apiBaseUrl}/api/payments/create-checkout-session`, {
+    const data = await apiFetch('/api/payments/create-checkout-session', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getAuthToken()}`
-      },
       body: JSON.stringify({
         ...paymentData,
         cartItems: paymentData.cartItems || []
       }),
     });
 
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error('Checkout session error response:', errorData);
-      throw new Error(errorData || 'Checkout session creation failed');
-    }
-
-    const data = await response.json();
-    
     if (!data.success) {
       throw new Error(data.error || 'Checkout session creation failed');
     }
@@ -113,23 +155,8 @@ export const redirectToCheckout = async (paymentData: PaymentData): Promise<void
 
 export const verifyPayment = async (sessionId: string): Promise<PaymentVerificationResponse> => {
   try {
-    const apiBaseUrl = getApiBaseUrl();
-    const response = await fetch(`${apiBaseUrl}/api/payments/verify-session/${sessionId}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getAuthToken()}`
-      }
-    });
+    const data = await apiFetch(`/api/payments/verify-session/${sessionId}`);
 
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error('Payment verification error response:', errorData);
-      throw new Error(errorData || 'Payment verification failed');
-    }
-
-    const data = await response.json();
-    
     if (!data.success) {
       throw new Error(data.error || 'Payment verification failed');
     }
@@ -159,22 +186,7 @@ export const getPaymentHistory = async (): Promise<{
   error?: string;
 }> => {
   try {
-    const apiBaseUrl = getApiBaseUrl();
-    const response = await fetch(`${apiBaseUrl}/api/payments/history`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getAuthToken()}`
-      }
-    });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error('Payment history error response:', errorData);
-      throw new Error(errorData || 'Failed to fetch payment history');
-    }
-
-    const data = await response.json();
+    const data = await apiFetch('/api/payments/history');
     
     if (!data.success) {
       throw new Error(data.error || 'Failed to fetch payment history');
@@ -193,31 +205,17 @@ export const getPaymentHistory = async (): Promise<{
   }
 };
 
-// Test API connection
 export const testApiConnection = async (): Promise<{
   success: boolean;
   url?: string;
   error?: string;
 }> => {
   try {
-    const apiBaseUrl = getApiBaseUrl();
-    const response = await fetch(`${apiBaseUrl}/api/payments/test-stripe`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getAuthToken()}`
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`API connection failed: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const data = await apiFetch('/api/payments/test-stripe');
     
     return {
       success: true,
-      url: apiBaseUrl,
+      url: getApiBaseUrl(),
       ...data
     };
   } catch (error) {
@@ -230,18 +228,6 @@ export const testApiConnection = async (): Promise<{
   }
 };
 
-// Legacy function name for backward compatibility
-export const createPaymentIntent = createCheckoutSession;
-
-// Legacy function for backward compatibility
-export const confirmPayment = async (stripe: any, clientSecret: string, paymentMethodId: string) => {
-  console.warn('confirmPayment is deprecated when using Checkout Sessions. Use verifyPayment instead.');
-  return {
-    success: false,
-    error: 'This method is not supported with Checkout Sessions'
-  };
-};
-
 // Debug function to log current configuration
 export const debugConfiguration = () => {
   console.log('Payment Service Configuration:', {
@@ -251,4 +237,15 @@ export const debugConfiguration = () => {
     viteAppUrl: import.meta.env.VITE_APP_URL,
     hasToken: !!getAuthToken()
   });
+};
+
+// Legacy functions for backward compatibility
+export const createPaymentIntent = createCheckoutSession;
+
+export const confirmPayment = async () => {
+  console.warn('confirmPayment is deprecated when using Checkout Sessions. Use verifyPayment instead.');
+  return {
+    success: false,
+    error: 'This method is not supported with Checkout Sessions'
+  };
 };
