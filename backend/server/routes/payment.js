@@ -7,28 +7,19 @@ const { v4: uuidv4 } = require('uuid');
 
 const router = express.Router();
 
-// Initialize Stripe with better error handling
-let stripe;
-try {
-  if (!process.env.STRIPE_SECRET_KEY) {
-    throw new Error('STRIPE_SECRET_KEY is not defined in environment variables');
-  }
-
-  stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: '2023-10-16',
-    maxNetworkRetries: 2, // Add retries for production
-  });
-
-  console.log('✅ Stripe initialized successfully');
-} catch (error) {
-  console.error('❌ Stripe initialization failed:', error.message);
-  process.exit(1); // Exit if Stripe can't be initialized
+// Initialize Stripe
+if (!process.env.STRIPE_SECRET_KEY) {
+  console.error('❌ STRIPE_SECRET_KEY is not defined in environment variables');
+  process.exit(1);
 }
 
-// Log the first 10 characters of STRIPE_SECRET_KEY for debugging (only in development)
-if (process.env.NODE_ENV === 'development') {
-  console.log('🔍 STRIPE_SECRET_KEY (first 10 chars):', process.env.STRIPE_SECRET_KEY?.substring(0, 10));
-}
+// Log the first 10 characters of STRIPE_SECRET_KEY for debugging
+console.log('🔍 STRIPE_SECRET_KEY (first 10 chars):', process.env.STRIPE_SECRET_KEY?.substring(0, 10));
+
+// Initialize Stripe with API version
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2023-10-16'
+});
 
 console.log('✅ Stripe initialized at startup:', {
   exists: !!stripe,
@@ -38,18 +29,6 @@ console.log('✅ Stripe initialized at startup:', {
   checkout: !!stripe.checkout,
   stripeProperties: Object.keys(stripe).slice(0, 10).join(', '),
 });
-
-// Helper function to get the correct base URL
-const getBaseUrl = (req) => {
-  // For production, use environment variable
-  if (process.env.NODE_ENV === 'production') {
-    return process.env.FRONTEND_URL || process.env.CLIENT_URL || 'https://your-frontend-app.onrender.com';
-  }
-  
-  // For development, try to get from headers first, then fallback to localhost
-  const origin = req.headers.origin || req.headers.referer?.replace(/\/$/, '');
-  return origin || 'http://localhost:5173';
-};
 
 // Validation middleware for checkout sessions
 const validateCheckoutSession = [
@@ -127,17 +106,13 @@ router.post('/create-checkout-session', authenticateToken, validateCheckoutSessi
       quantity: item.quantity || 1,
     }));
 
-    // Get the base URL for redirects
-    const baseUrl = getBaseUrl(req);
-    console.log('🔍 Using base URL:', baseUrl);
-
     // Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
-      success_url: `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/payment/cancel`,
+      success_url: `${req.headers.origin || 'http://localhost:5173'}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.origin || 'http://localhost:5173'}/payment/cancel`,
       customer_email: customerEmail,
       client_reference_id: order.id.toString(),
       metadata: {
@@ -313,9 +288,6 @@ router.post('/create-charge', authenticateToken, [
 
     console.log('🔍 Direct charge request:', { amount, currency, paymentMethodId });
 
-    // Get the base URL for return URL
-    const baseUrl = getBaseUrl(req);
-
     // Create payment intent instead of direct charge for better security
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert to cents
@@ -328,7 +300,7 @@ router.post('/create-charge', authenticateToken, [
         customerEmail,
       },
       confirm: true,
-      return_url: `${baseUrl}/payment/return`,
+      return_url: `${req.headers.origin || 'http://localhost:5173'}/payment/return`,
     });
 
     console.log('✅ Payment intent created:', paymentIntent.id);
@@ -403,7 +375,7 @@ router.get('/test-stripe', (req, res) => {
 });
 
 // Test Stripe checkout session creation
-router.get('/test-checkout', async (req, res) => {
+router.get('/test-checkout', async (req, res) => { // Changed to async function
   console.log('🔍 Testing Stripe checkout session creation...');
   try {
     const testSession = await stripe.checkout.sessions.create({

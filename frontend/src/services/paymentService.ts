@@ -1,5 +1,3 @@
-// services/paymentService.ts
-
 // Payment service for handling Stripe Checkout Sessions
 export interface PaymentData {
   amount: number;
@@ -35,17 +33,14 @@ export interface PaymentVerificationResponse {
 
 // Get the API base URL based on environment
 const getApiBaseUrl = (): string => {
-  // In production, use your actual backend URL
+  // Force production URL in production
   if (import.meta.env.PROD) {
-    return 'https://zoovia-web-app-3.onrender.com'; // Updated to match your backend
+    return 'https://zoovia-web-app-3.onrender.com'; // Hardcoded production URL
   }
   
   // In development, use environment variable or default local URL
   return import.meta.env.VITE_API_URL || 'http://localhost:3001';
 };
-
-// Export the API base URL
-export const API_BASE_URL = getApiBaseUrl();
 
 // Get auth token from storage with proper error handling
 const getAuthToken = (): string => {
@@ -237,7 +232,7 @@ export const testApiConnection = async (): Promise<{
 export const debugConfiguration = () => {
   console.log('Payment Service Configuration:', {
     isProd: import.meta.env.PROD,
-    apiBaseUrl: API_BASE_URL,
+    apiBaseUrl: getApiBaseUrl(),
     viteApiUrl: import.meta.env.VITE_API_URL,
     viteAppUrl: import.meta.env.VITE_APP_URL,
     hasToken: !!getAuthToken()
