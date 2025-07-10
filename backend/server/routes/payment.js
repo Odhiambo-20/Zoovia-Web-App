@@ -7,19 +7,28 @@ const { v4: uuidv4 } = require('uuid');
 
 const router = express.Router();
 
-// Initialize Stripe
-if (!process.env.STRIPE_SECRET_KEY) {
-  console.error('❌ STRIPE_SECRET_KEY is not defined in environment variables');
-  process.exit(1);
+// Initialize Stripe with better error handling
+let stripe;
+try {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error('STRIPE_SECRET_KEY is not defined in environment variables');
+  }
+
+  stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: '2023-10-16',
+    maxNetworkRetries: 2, // Add retries for production
+  });
+
+  console.log('✅ Stripe initialized successfully');
+} catch (error) {
+  console.error('❌ Stripe initialization failed:', error.message);
+  process.exit(1); // Exit if Stripe can't be initialized
 }
 
-// Log the first 10 characters of STRIPE_SECRET_KEY for debugging
-console.log('🔍 STRIPE_SECRET_KEY (first 10 chars):', process.env.STRIPE_SECRET_KEY?.substring(0, 10));
-
-// Initialize Stripe with API version
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2023-10-16'
-});
+// Log the first 10 characters of STRIPE_SECRET_KEY for debugging (only in development)
+if (process.env.NODE_ENV === 'development') {
+  console.log('🔍 STRIPE_SECRET_KEY (first 10 chars):', process.env.STRIPE_SECRET_KEY?.substring(0, 10));
+}
 
 console.log('✅ Stripe initialized at startup:', {
   exists: !!stripe,
@@ -394,7 +403,7 @@ router.get('/test-stripe', (req, res) => {
 });
 
 // Test Stripe checkout session creation
-router.get('/test-checkout', async (req, res) => { // Changed to async function
+router.get('/test-checkout', async (req, res) => {
   console.log('🔍 Testing Stripe checkout session creation...');
   try {
     const testSession = await stripe.checkout.sessions.create({
