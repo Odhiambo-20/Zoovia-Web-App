@@ -11,10 +11,11 @@ export default defineConfig({
     host: '0.0.0.0',
     port: Number(process.env.PORT) || 4173,
     strictPort: true,
-    allowedHosts: ['zoovia-web-app-2.onrender.com']
+    allowedHosts: ['zoovia-web-app-2.onrender.com', '.onrender.com']
   },
   server: {
     host: '0.0.0.0',
-    port: 5173
+    port: 5173,
+    allowedHosts: ['zoovia-web-app-2.onrender.com', '.onrender.com']
   }
 });

@@ -30,6 +30,18 @@ console.log('✅ Stripe initialized at startup:', {
   stripeProperties: Object.keys(stripe).slice(0, 10).join(', '),
 });
 
+// Helper function to get the correct base URL
+const getBaseUrl = (req) => {
+  // For production, use environment variable
+  if (process.env.NODE_ENV === 'production') {
+    return process.env.FRONTEND_URL || process.env.CLIENT_URL || 'https://your-frontend-app.onrender.com';
+  }
+  
+  // For development, try to get from headers first, then fallback to localhost
+  const origin = req.headers.origin || req.headers.referer?.replace(/\/$/, '');
+  return origin || 'http://localhost:5173';
+};
+
 // Validation middleware for checkout sessions
 const validateCheckoutSession = [
   body('amount').isFloat({ min: 0.50 }).withMessage('Amount must be at least $0.50'),
@@ -106,13 +118,17 @@ router.post('/create-checkout-session', authenticateToken, validateCheckoutSessi
       quantity: item.quantity || 1,
     }));
 
+    // Get the base URL for redirects
+    const baseUrl = getBaseUrl(req);
+    console.log('🔍 Using base URL:', baseUrl);
+
     // Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
-      success_url: `${req.headers.origin || 'http://localhost:5173'}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.origin || 'http://localhost:5173'}/payment/cancel`,
+      success_url: `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/payment/cancel`,
       customer_email: customerEmail,
       client_reference_id: order.id.toString(),
       metadata: {
@@ -288,6 +304,9 @@ router.post('/create-charge', authenticateToken, [
 
     console.log('🔍 Direct charge request:', { amount, currency, paymentMethodId });
 
+    // Get the base URL for return URL
+    const baseUrl = getBaseUrl(req);
+
     // Create payment intent instead of direct charge for better security
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert to cents
@@ -300,7 +319,7 @@ router.post('/create-charge', authenticateToken, [
         customerEmail,
       },
       confirm: true,
-      return_url: `${req.headers.origin || 'http://localhost:5173'}/payment/return`,
+      return_url: `${baseUrl}/payment/return`,
     });
 
     console.log('✅ Payment intent created:', paymentIntent.id);

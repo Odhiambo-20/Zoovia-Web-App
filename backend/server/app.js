@@ -29,10 +29,10 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// CORS configuration
+// CORS configuration - FIXED
 app.use(
   cors({
-    origin: process.env.VITE_APP_URL || 'http://localhost:5173',
+    origin: process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:5173',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -46,6 +46,23 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Trust proxy for accurate IP addresses
 app.set('trust proxy', 1);
 
+// Root route - NEW
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Zoovio API Server',
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      auth: '/api/auth',
+      payments: '/api/payments',
+      orders: '/api/orders'
+    },
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+  });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({
@@ -58,16 +75,23 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
-app.use('/api/payments', paymentRoutes); // Ensure this line is correct
+app.use('/api/payments', paymentRoutes);
 app.use('/api/orders', orderRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
-  console.log(`404 Error - Requested URL: ${req.url}, Method: ${req.method}`); // Debug log
+  console.log(`404 Error - Requested URL: ${req.url}, Method: ${req.method}`);
   res.status(404).json({
     success: false,
     error: 'API endpoint not found',
     requestedUrl: req.url,
+    availableEndpoints: {
+      root: '/',
+      health: '/health',
+      auth: '/api/auth',
+      payments: '/api/payments',
+      orders: '/api/orders'
+    }
   });
 });
 
@@ -94,8 +118,13 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`🚀 Zoovio API server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🌐 CORS enabled for: ${process.env.VITE_APP_URL || 'http://localhost:5173'}`);
-      console.log(`🔍 Available routes: /api/auth, /api/payments, /api/orders`); // Debug log
+      console.log(`🌐 CORS enabled for: ${process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:5173'}`);
+      console.log(`🔍 Available routes:`);
+      console.log(`   - GET  /`);
+      console.log(`   - GET  /health`);
+      console.log(`   - *    /api/auth`);
+      console.log(`   - *    /api/payments`);
+      console.log(`   - *    /api/orders`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
