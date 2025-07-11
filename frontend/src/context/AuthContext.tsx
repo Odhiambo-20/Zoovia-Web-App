@@ -30,10 +30,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Dynamic API URL based on environment
-  const API_BASE_URL = import.meta.env.VITE_APP_URL || 
-                      import.meta.env.VITE_API_URL || 
-                      'http://localhost:3001';
+  // Fixed API URL configuration - MUST point to your Render backend
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://backend.onrender.com';
+  
+  console.log('API_BASE_URL:', API_BASE_URL); // Debug log
 
   // Check for existing token on mount
   useEffect(() => {
@@ -77,6 +77,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
+      console.log('Attempting login to:', `${API_BASE_URL}/api/auth/login`); // Debug log
+      
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
@@ -99,6 +101,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         token: data.data.token,
       });
     } catch (error) {
+      console.error('Login error:', error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -108,6 +111,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const register = async (name: string, email: string, password: string) => {
     try {
       setIsLoading(true);
+      console.log('Attempting registration to:', `${API_BASE_URL}/api/auth/register`); // Debug log
+      
       const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
@@ -123,6 +128,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const data = await response.json();
 
       if (!response.ok) {
+        console.error('Registration failed:', data);
         throw new Error(data.error || 'Registration failed');
       }
 
@@ -134,6 +140,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         token: data.data.token,
       });
     } catch (error) {
+      console.error('Registration error:', error);
       throw error;
     } finally {
       setIsLoading(false);
