@@ -33,7 +33,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Fixed API URL configuration - MUST point to your Render backend
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://backend.onrender.com';
   
-  console.log('API_BASE_URL:', API_BASE_URL); // Debug log
+  console.log('Environment check:', {
+    VITE_API_URL: import.meta.env.VITE_API_URL,
+    API_BASE_URL: API_BASE_URL,
+    NODE_ENV: import.meta.env.NODE_ENV,
+    MODE: import.meta.env.MODE
+  }); // Debug log
 
   // Check for existing token on mount
   useEffect(() => {
