@@ -189,6 +189,37 @@ router.post('/login', loginValidation, async (req, res) => {
   }
 });
 
+// Verify token endpoint - NEW
+router.get('/verify', authenticateToken, async (req, res) => {
+  try {
+    // If we reach here, the token is valid (authenticateToken middleware passed)
+    res.json({
+      success: true,
+      message: 'Token is valid',
+      data: {
+        user: {
+          id: req.user.id,
+          fullName: req.user.full_name,
+          email: req.user.email,
+          phone: req.user.phone,
+          address: req.user.address,
+          city: req.user.city,
+          country: req.user.country,
+          postalCode: req.user.postal_code,
+          isVerified: req.user.is_verified,
+          createdAt: req.user.created_at
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Token verification error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Token verification failed'
+    });
+  }
+});
+
 // Logout user
 router.post('/logout', authenticateToken, async (req, res) => {
   try {
