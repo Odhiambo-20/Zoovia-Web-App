@@ -31,7 +31,8 @@ app.use(limiter);
 
 // CORS configuration - Updated for Render deployment
 const allowedOrigins = [
-  'https://zoovia-web-app-3.onrender.com',  // Your frontend URL on Render
+  'https://zoovia-web-app-5.onrender.com',  // Your frontend URL on Render
+  'https://zoovia-web-app-6.onrender.com',  // Your ACTUAL backend URL on Render (for testing)
   'http://localhost:5173',                  // Local development frontend
   'http://localhost:3000',                  // Alternative local frontend
   'http://localhost:3001',                  // Local backend for testing
