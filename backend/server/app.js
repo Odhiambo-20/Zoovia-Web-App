@@ -29,13 +29,32 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// CORS configuration - FIXED
+// CORS configuration - Updated for Render deployment
+const allowedOrigins = [
+  'https://zoovia-web-app-3.onrender.com',  // Your frontend URL on Render
+  'http://localhost:5173',                  // Local development frontend
+  'http://localhost:3000',                  // Alternative local frontend
+  'http://localhost:3001',                  // Local backend for testing
+];
+
 app.use(
   cors({
-    origin: ['https://backend.onrender.com', 'http://localhost:5173'],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.log(`CORS blocked origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   })
 );
 
@@ -118,7 +137,7 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`🚀 Zoovio API server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🌐 CORS enabled for: ${process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:5173'}`);
+      console.log(`🌐 CORS enabled for: ${allowedOrigins.join(', ')}`);
       console.log(`🔍 Available routes:`);
       console.log(`   - GET  /`);
       console.log(`   - GET  /health`);
