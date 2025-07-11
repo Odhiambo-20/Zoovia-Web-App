@@ -9,7 +9,7 @@
     "server:dev": "nodemon server/app.js",
     "build": "npm install --include=dev && npx vite build",
     "preview": "vite preview --port 10000",
-    "start": "vite preview --port 10000",
+    "start": "vite preview --port ${PORT:-3001} --host 0.0.0.0",
     "lint": "eslint ."
   },
   "dependencies": {
