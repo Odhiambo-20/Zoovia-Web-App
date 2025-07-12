@@ -25,7 +25,7 @@ const Cats: React.FC = () => {
       name: 'Whiskers',
       breed: 'Persian',
       age: '2 years',
-      price: 0.8,
+      price: 0.0001,
       image: 'https://images.pexels.com/photos/1170986/pexels-photo-1170986.jpeg?auto=compress&cs=tinysrgb&w=600',
       description: 'Gentle and affectionate Persian cat, loves to cuddle.',
       personality: ['Calm', 'Affectionate', 'Quiet'],
