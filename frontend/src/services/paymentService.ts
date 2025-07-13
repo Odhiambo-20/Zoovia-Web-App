@@ -35,7 +35,7 @@ export interface PaymentVerificationResponse {
 const getApiBaseUrl = (): string => {
   // Force production URL in production
   if (import.meta.env.PROD) {
-    return 'https://zoovia-web-app-3.onrender.com'; // Hardcoded production URL
+    return 'https://zoovia-web-app-6.onrender.com'; // Hardcoded production URL
   }
   
   // In development, use environment variable or default local URL
