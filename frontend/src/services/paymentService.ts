@@ -33,9 +33,9 @@ export interface PaymentVerificationResponse {
 
 // Get the API base URL based on environment
 const getApiBaseUrl = (): string => {
-  // Force production URL in production
+  // Use environment variable in production
   if (import.meta.env.PROD) {
-    return 'https://zoovia-web-app-6.onrender.com'; // Hardcoded production URL
+    return import.meta.env.VITE_API_URL || 'https://zoovia-web-app-6.onrender.com';
   }
   
   // In development, use environment variable or default local URL
