@@ -109,7 +109,7 @@ const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
 
 export const createCheckoutSession = async (paymentData: PaymentData): Promise<CheckoutResponse> => {
   try {
-    const data = await apiFetch('/api/create-checkout-session', {
+    const data = await apiFetch('/api/payments/create-checkout-session', {
       method: 'POST',
       body: JSON.stringify({
         ...paymentData,
